@@ -1,37 +1,24 @@
 import { useState, useEffect } from "react";
 
-/*
-  Partial Quotient Method layout for  dividend ÷ divisor
-  Example: 989 ÷ 43
-
-  Steps are computed automatically from the dividend & divisor.
-  Each step = largest round partial quotient that fits.
-  Student fills: each partial quotient (right column) + each remainder + final quotient + final remainder.
-  Only the final quotient (and remainder) are checked on submit.
-*/
-
 function computeSteps(dividend, divisor) {
   const steps = [];
   let remaining = dividend;
 
-  // Choose "nice" partial quotients (powers of 10 multiples of divisor)
   while (remaining >= divisor) {
-    // Find the largest multiple of (divisor × 10^n) that fits
     let partial = 1;
     let candidate = divisor;
     while (candidate * 10 <= remaining) {
       candidate *= 10;
       partial *= 10;
     }
-    // Now find how many times candidate fits
     const times = Math.floor(remaining / candidate);
     const actualPartial = times * partial;
     const subtracted = actualPartial * divisor;
     remaining = remaining - subtracted;
     steps.push({
-      partial: actualPartial,       // the partial quotient (e.g. 10)
-      subtracted,                   // what gets subtracted (e.g. 430)
-      remainderAfter: remaining,    // remainder after this step
+      partial: actualPartial,
+      subtracted,
+      remainderAfter: remaining,
     });
   }
 
@@ -45,7 +32,6 @@ function computeSteps(dividend, divisor) {
 export default function PartialQuotient({ dividend, divisor, onSubmit }) {
   const { steps, quotient, remainder } = computeSteps(dividend, divisor);
 
-  // Student inputs: one per step (the partial quotient) + remainders + final quotient + final remainder
   const [partials, setPartials]     = useState(steps.map(() => ""));
   const [remainders, setRemainders] = useState(steps.map(() => ""));
   const [finalQ, setFinalQ]         = useState("");
@@ -53,7 +39,6 @@ export default function PartialQuotient({ dividend, divisor, onSubmit }) {
   const [submitted, setSubmitted]   = useState(false);
   const [correct, setCorrect]       = useState(null);
 
-  // Reset when problem changes
   useEffect(() => {
     const { steps: s } = computeSteps(dividend, divisor);
     setPartials(s.map(() => ""));
@@ -68,37 +53,55 @@ export default function PartialQuotient({ dividend, divisor, onSubmit }) {
     const qCorrect = parseInt(finalQ) === quotient;
     const rCorrect = parseInt(finalR) === remainder;
     const isCorrect = qCorrect && rCorrect;
+
+    // If wrong: replace each wrong box value with the correct answer directly
+    if (!isCorrect) {
+      setPartials(p => p.map((v, i) =>
+        parseInt(v) !== steps[i].partial ? String(steps[i].partial) : v
+      ));
+      setRemainders(r => r.map((v, i) =>
+        parseInt(v) !== steps[i].remainderAfter ? String(steps[i].remainderAfter) : v
+      ));
+      if (!qCorrect) setFinalQ(String(quotient));
+      if (!rCorrect) setFinalR(String(remainder));
+    }
+
     setSubmitted(true);
     setCorrect(isCorrect);
     onSubmit(isCorrect, quotient, remainder);
   };
 
-  const setPartial = (i, val) => setPartials(p => p.map((v, j) => j === i ? val : v));
+  const setPartial   = (i, val) => setPartials(p  => p.map((v, j) => j === i ? val : v));
   const setRemainder = (i, val) => setRemainders(r => r.map((v, j) => j === i ? val : v));
 
-  // Show correct values after wrong submission
-  const show = (studentVal, correctVal) => {
-    if (!submitted) return studentVal;
-    const isWrong = parseInt(studentVal) !== correctVal;
-    return { value: studentVal, wrong: isWrong, correct: correctVal };
+  // Whether a value was originally wrong (to color it differently)
+  const [wrongPartials,   setWrongPartials]   = useState([]);
+  const [wrongRemainders, setWrongRemainders] = useState([]);
+  const [wrongFinalQ,     setWrongFinalQ]     = useState(false);
+  const [wrongFinalR,     setWrongFinalR]     = useState(false);
+
+  const handleSubmitWithTracking = () => {
+    // Track which were wrong BEFORE replacing
+    setWrongPartials(partials.map((v, i) => parseInt(v) !== steps[i].partial));
+    setWrongRemainders(remainders.map((v, i) => parseInt(v) !== steps[i].remainderAfter));
+    setWrongFinalQ(parseInt(finalQ) !== quotient);
+    setWrongFinalR(parseInt(finalR) !== remainder);
+    handleSubmit();
   };
 
-  const StepInput = ({ value, onChange, correctVal, small }) => {
-    const wrong = submitted && parseInt(value) !== correctVal;
-    const right = submitted && parseInt(value) === correctVal;
-    return (
-      <span className="pq-input-wrap">
-        <input
-          type="number"
-          className={`pq-input${small ? " pq-input-sm" : ""}${wrong ? " pq-wrong" : ""}${right ? " pq-right" : ""}`}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          disabled={submitted}
-        />
-        {wrong && <span className="pq-correct-hint">{correctVal}</span>}
-      </span>
-    );
-  };
+  const StepInput = ({ value, onChange, isWrong, small }) => (
+    <input
+      type="number"
+      className={[
+        "pq-input",
+        small ? "pq-input-sm" : "",
+        submitted ? (isWrong ? "pq-corrected" : "pq-right") : "",
+      ].join(" ")}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      disabled={submitted}
+    />
+  );
 
   return (
     <div className="pq-wrapper">
@@ -108,14 +111,14 @@ export default function PartialQuotient({ dividend, divisor, onSubmit }) {
 
       <div className="pq-layout">
 
-        {/* TOP ROW: quotient box  R  remainder box */}
+        {/* TOP ROW: quotient  R  remainder */}
         <div className="pq-top-row">
-          <StepInput value={finalQ} onChange={setFinalQ} correctVal={quotient} />
+          <StepInput value={finalQ} onChange={setFinalQ} isWrong={wrongFinalQ} />
           <span className="pq-r-label">R</span>
-          <StepInput value={finalR} onChange={setFinalR} correctVal={remainder} />
+          <StepInput value={finalR} onChange={setFinalR} isWrong={wrongFinalR} />
         </div>
 
-        {/* DIVISION BAR: divisor ) dividend */}
+        {/* DIVISION BAR */}
         <div className="pq-division-bar">
           <span className="pq-divisor">{divisor}</span>
           <span className="pq-bracket">)</span>
@@ -125,7 +128,6 @@ export default function PartialQuotient({ dividend, divisor, onSubmit }) {
         {/* STEPS */}
         {steps.map((step, i) => (
           <div key={i} className="pq-step-group">
-            {/* Subtraction row */}
             <div className="pq-subtract-row">
               <span className="pq-minus">−</span>
               <span className="pq-subtracted">{step.subtracted}</span>
@@ -133,21 +135,17 @@ export default function PartialQuotient({ dividend, divisor, onSubmit }) {
               <StepInput
                 value={partials[i]}
                 onChange={v => setPartial(i, v)}
-                correctVal={step.partial}
+                isWrong={wrongPartials[i]}
                 small
               />
               <span className="pq-x-divisor">× {divisor}</span>
             </div>
-
-            {/* Underline */}
             <div className="pq-underline" />
-
-            {/* Remainder row */}
             <div className="pq-remainder-row">
               <StepInput
                 value={remainders[i]}
                 onChange={v => setRemainder(i, v)}
-                correctVal={step.remainderAfter}
+                isWrong={wrongRemainders[i]}
               />
             </div>
           </div>
@@ -157,12 +155,14 @@ export default function PartialQuotient({ dividend, divisor, onSubmit }) {
       {/* Result banner */}
       {submitted && (
         <div className={`pq-result ${correct ? "pq-result-correct" : "pq-result-wrong"}`}>
-          {correct ? "🎉 Correct!" : `❌ Not quite — the answer is ${quotient} R ${remainder}`}
+          {correct
+            ? "🎉 Correct!"
+            : `❌ Wrong — the correct answers have been filled in for you`}
         </div>
       )}
 
       {!submitted && (
-        <button className="submit-btn pq-submit" onClick={handleSubmit}>
+        <button className="submit-btn pq-submit" onClick={handleSubmitWithTracking}>
           Submit →
         </button>
       )}

@@ -555,11 +555,102 @@ body {
 .empty-icon { font-size: 2.4rem; }
 
 /* ========================
-   SOLVE CARD WIDE (division)
+   SOLVE CARD WIDE (division / lq)
 ======================== */
-.solve-card-wide {
-  max-width: 580px !important;
+.solve-card-wide { max-width: 580px !important; }
+
+/* ========================
+   ADMIN — LQ FORM
+======================== */
+.op-select-full { width: 100%; font-size: 1rem; }
+.field-op-spacer { display: flex; align-items: flex-end; padding-bottom: 12px; justify-content: center; }
+.op-badge { font-family: var(--font-display); font-size: 1.8rem; color: var(--admin); line-height: 1; }
+
+.lq-admin-info {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: #fff8e1; border: 1.5px solid #fcd34d;
+  border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;
+  font-size: 0.9rem; font-weight: 600; color: #92400e; line-height: 1.5;
 }
+.lq-admin-info span { font-size: 1.4rem; flex-shrink: 0; }
+.lq-digit-inputs { display: flex; gap: 12px; }
+.lq-digit-input {
+  width: 72px; height: 56px; font-family: var(--font-display); font-size: 1.6rem;
+  text-align: center; border: 2.5px solid var(--border); border-radius: 12px;
+  background: var(--bg); color: var(--text); outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s; -moz-appearance: textfield;
+}
+.lq-digit-input::-webkit-outer-spin-button, .lq-digit-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.lq-digit-input:focus { border-color: var(--admin); box-shadow: 0 0 0 3px rgba(255,107,53,0.15); }
+
+.lq-admin-preview {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--success-light); border: 1.5px solid var(--success);
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 18px;
+  animation: badgePop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.lq-preview-label { font-size: 0.8rem; font-weight: 700; color: var(--success); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.lq-preview-eq { font-family: var(--font-display); font-size: 1rem; color: var(--text); }
+.lq-preview-card { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; }
+.lq-chip-preview { display: flex; gap: 10px; }
+.lq-eq-preview { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.lq-box-preview {
+  width: 48px; height: 48px; border: 2.5px dashed var(--border); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 1.4rem; color: var(--muted);
+}
+
+/* ========================
+   LARGEST QUOTIENT — STUDENT
+======================== */
+.lq-wrapper { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 20px; }
+
+.lq-bank {
+  display: flex; flex-wrap: wrap; gap: 10px; min-height: 64px;
+  background: var(--bg); border: 2.5px dashed var(--border); border-radius: 14px;
+  padding: 12px 16px; width: 100%; align-items: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+.lq-bank-empty { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+
+.lq-chip {
+  width: 52px; height: 52px; background: var(--student); color: white;
+  border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 1.5rem; cursor: grab; user-select: none;
+  box-shadow: 0 3px 10px rgba(58,134,255,0.35); transition: transform 0.12s, box-shadow 0.12s;
+}
+.lq-chip:hover { transform: scale(1.08); box-shadow: 0 6px 18px rgba(58,134,255,0.4); }
+.lq-chip:active { cursor: grabbing; transform: scale(0.95); }
+.lq-chip-empty { background: var(--border); color: var(--muted); box-shadow: none; cursor: default; }
+
+.lq-equation { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 8px 0; }
+.lq-top-row { display: flex; align-items: center; gap: 14px; }
+.lq-op { font-family: var(--font-display); font-size: 2rem; color: var(--admin); }
+.lq-divide-line { width: 160px; height: 3px; background: var(--text); border-radius: 2px; margin: 2px 0; }
+.lq-bottom-row { display: flex; justify-content: center; }
+
+.lq-box {
+  width: 64px; height: 64px; border: 2.5px dashed var(--border); border-radius: 14px;
+  background: var(--bg); display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 1.8rem; color: var(--text);
+  cursor: default; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s; user-select: none;
+}
+.lq-box.lq-box-filled { border-style: solid; border-color: var(--student); background: var(--student-light); cursor: grab; box-shadow: 0 2px 8px rgba(58,134,255,0.18); }
+.lq-box.lq-box-over { border-color: var(--admin); background: var(--admin-light); box-shadow: 0 0 0 3px rgba(255,107,53,0.2); }
+.lq-box.lq-box-correct { border-color: var(--success); background: var(--success-light); color: var(--success); }
+.lq-box.lq-box-wrong   { border-color: var(--error);   background: var(--error-light);   color: var(--error); }
+.lq-box-placeholder { color: var(--muted); font-size: 1.2rem; }
+
+.lq-preview { font-family: var(--font-display); font-size: 1.3rem; color: var(--student); text-align: center; width: 100%; animation: badgePop 0.2s ease; }
+
+.lq-actions { display: flex; gap: 12px; width: 100%; }
+.lq-reset-btn {
+  flex: 0 0 auto; padding: 14px 20px; background: var(--bg);
+  border: 2px solid var(--border); border-radius: 14px;
+  font-family: var(--font-body); font-weight: 800; font-size: 0.95rem;
+  cursor: pointer; color: var(--muted); transition: all 0.15s;
+}
+.lq-reset-btn:hover { border-color: var(--text); color: var(--text); }
 
 /* ========================
    PARTIAL QUOTIENT
@@ -728,32 +819,18 @@ body {
   font-size: 1rem;
 }
 
-.pq-input.pq-wrong {
-  border-color: var(--error);
-  background: var(--error-light);
-  color: var(--error);
-}
-
 .pq-input.pq-right {
   border-color: var(--success);
   background: var(--success-light);
   color: var(--success);
 }
 
-.pq-correct-hint {
-  position: absolute;
-  top: -22px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--success);
-  color: white;
-  font-family: var(--font-body);
-  font-size: 0.7rem;
+/* Wrong answer replaced in-box with correct value — shown in orange */
+.pq-input.pq-corrected {
+  border-color: var(--admin);
+  background: #fff2ed;
+  color: var(--admin);
   font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
 }
 
 /* Result banner */
@@ -791,3 +868,32 @@ body {
   80% { transform: translateX(6px); }
 }
 .shake { animation: shake 0.5s ease; }
+
+/* ========================
+   STUDENT — LQ VIEW
+======================== */
+.lq-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.lq-type-badge {
+  background: #fff8e1;
+  color: #d97706;
+  border: 1.5px solid #fcd34d;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.lq-done-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
