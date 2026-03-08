@@ -29,6 +29,72 @@ function computeSteps(dividend, divisor) {
   };
 }
 
+// A read-only operation display — used for both student attempt and correct answer
+function OperationDisplay({ dividend, divisor, steps, quotient, remainder, partials, remainders, finalQ, finalR, isCorrectVersion }) {
+
+  const cellStyle = (studentVal, correctVal) => {
+    if (isCorrectVersion) return "pq-input pq-read-correct";
+    const isWrong = parseInt(studentVal) !== correctVal;
+    return isWrong ? "pq-input pq-read-wrong" : "pq-input pq-read-ok";
+  };
+
+  return (
+    <div className={`pq-layout ${isCorrectVersion ? "pq-layout-correct" : "pq-layout-student"}`}>
+
+      {/* Label */}
+      <div className="pq-version-label">
+        {isCorrectVersion ? "✅ Correct Answer" : "❌ Your Answer"}
+      </div>
+
+      {/* TOP ROW: quotient R remainder */}
+      <div className="pq-top-row">
+        <input type="number" readOnly
+          className={cellStyle(finalQ, quotient)}
+          value={isCorrectVersion ? quotient : finalQ}
+        />
+        <span className="pq-r-label">R</span>
+        <input type="number" readOnly
+          className={cellStyle(finalR, remainder)}
+          value={isCorrectVersion ? remainder : finalR}
+        />
+      </div>
+
+      {/* DIVISION BAR */}
+      <div className="pq-division-bar">
+        <span className="pq-divisor">{divisor}</span>
+        <span className="pq-bracket">)</span>
+        <span className="pq-dividend">{dividend}</span>
+      </div>
+
+      {/* STEPS */}
+      {steps.map((step, i) => (
+        <div key={i} className="pq-step-group">
+          <div className="pq-subtract-row">
+            <span className="pq-minus">−</span>
+            <span className="pq-subtracted">{step.subtracted}</span>
+            <span className="pq-arrow">←</span>
+            <input type="number" readOnly
+              className={`pq-input pq-input-sm ${isCorrectVersion
+                ? "pq-read-correct"
+                : parseInt(partials[i]) !== step.partial ? "pq-read-wrong" : "pq-read-ok"
+              }`}
+              value={isCorrectVersion ? step.partial : partials[i]}
+            />
+            <span className="pq-x-divisor">× {divisor}</span>
+          </div>
+          <div className="pq-underline" />
+          <div className="pq-remainder-row">
+            <input type="number" readOnly
+              className={cellStyle(remainders[i], step.remainderAfter)}
+              value={isCorrectVersion ? step.remainderAfter : remainders[i]}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function PartialQuotient({ dividend, divisor, onSubmit }) {
   const { steps, quotient, remainder } = computeSteps(dividend, divisor);
 
@@ -39,6 +105,12 @@ export default function PartialQuotient({ dividend, divisor, onSubmit }) {
   const [submitted, setSubmitted]   = useState(false);
   const [correct, setCorrect]       = useState(null);
 
+  // Snapshots of what the student answered — frozen at submit time
+  const [snapPartials,   setSnapPartials]   = useState([]);
+  const [snapRemainders, setSnapRemainders] = useState([]);
+  const [snapFinalQ,     setSnapFinalQ]     = useState("");
+  const [snapFinalR,     setSnapFinalR]     = useState("");
+
   useEffect(() => {
     const { steps: s } = computeSteps(dividend, divisor);
     setPartials(s.map(() => ""));
@@ -47,61 +119,40 @@ export default function PartialQuotient({ dividend, divisor, onSubmit }) {
     setFinalR("");
     setSubmitted(false);
     setCorrect(null);
+    setSnapPartials([]);
+    setSnapRemainders([]);
+    setSnapFinalQ("");
+    setSnapFinalR("");
   }, [dividend, divisor]);
+
+  const setPartial   = (i, val) => setPartials(p  => p.map((v, j) => j === i ? val : v));
+  const setRemainder = (i, val) => setRemainders(r => r.map((v, j) => j === i ? val : v));
+
+  const StepInput = ({ value, onChange, small }) => (
+    <input
+      type="number"
+      className={`pq-input${small ? " pq-input-sm" : ""}`}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      disabled={submitted}
+    />
+  );
 
   const handleSubmit = () => {
     const qCorrect = parseInt(finalQ) === quotient;
     const rCorrect = parseInt(finalR) === remainder;
     const isCorrect = qCorrect && rCorrect;
 
-    // If wrong: replace each wrong box value with the correct answer directly
-    if (!isCorrect) {
-      setPartials(p => p.map((v, i) =>
-        parseInt(v) !== steps[i].partial ? String(steps[i].partial) : v
-      ));
-      setRemainders(r => r.map((v, i) =>
-        parseInt(v) !== steps[i].remainderAfter ? String(steps[i].remainderAfter) : v
-      ));
-      if (!qCorrect) setFinalQ(String(quotient));
-      if (!rCorrect) setFinalR(String(remainder));
-    }
+    // Freeze a snapshot of student answers before any state changes
+    setSnapPartials([...partials]);
+    setSnapRemainders([...remainders]);
+    setSnapFinalQ(finalQ);
+    setSnapFinalR(finalR);
 
     setSubmitted(true);
     setCorrect(isCorrect);
     onSubmit(isCorrect, quotient, remainder);
   };
-
-  const setPartial   = (i, val) => setPartials(p  => p.map((v, j) => j === i ? val : v));
-  const setRemainder = (i, val) => setRemainders(r => r.map((v, j) => j === i ? val : v));
-
-  // Whether a value was originally wrong (to color it differently)
-  const [wrongPartials,   setWrongPartials]   = useState([]);
-  const [wrongRemainders, setWrongRemainders] = useState([]);
-  const [wrongFinalQ,     setWrongFinalQ]     = useState(false);
-  const [wrongFinalR,     setWrongFinalR]     = useState(false);
-
-  const handleSubmitWithTracking = () => {
-    // Track which were wrong BEFORE replacing
-    setWrongPartials(partials.map((v, i) => parseInt(v) !== steps[i].partial));
-    setWrongRemainders(remainders.map((v, i) => parseInt(v) !== steps[i].remainderAfter));
-    setWrongFinalQ(parseInt(finalQ) !== quotient);
-    setWrongFinalR(parseInt(finalR) !== remainder);
-    handleSubmit();
-  };
-
-  const StepInput = ({ value, onChange, isWrong, small }) => (
-    <input
-      type="number"
-      className={[
-        "pq-input",
-        small ? "pq-input-sm" : "",
-        submitted ? (isWrong ? "pq-corrected" : "pq-right") : "",
-      ].join(" ")}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      disabled={submitted}
-    />
-  );
 
   return (
     <div className="pq-wrapper">
@@ -109,60 +160,82 @@ export default function PartialQuotient({ dividend, divisor, onSubmit }) {
         Use the partial quotients method to find <strong>{dividend} ÷ {divisor}</strong>. Fill in the missing numbers.
       </p>
 
-      <div className="pq-layout">
-
-        {/* TOP ROW: quotient  R  remainder */}
-        <div className="pq-top-row">
-          <StepInput value={finalQ} onChange={setFinalQ} isWrong={wrongFinalQ} />
-          <span className="pq-r-label">R</span>
-          <StepInput value={finalR} onChange={setFinalR} isWrong={wrongFinalR} />
-        </div>
-
-        {/* DIVISION BAR */}
-        <div className="pq-division-bar">
-          <span className="pq-divisor">{divisor}</span>
-          <span className="pq-bracket">)</span>
-          <span className="pq-dividend">{dividend}</span>
-        </div>
-
-        {/* STEPS */}
-        {steps.map((step, i) => (
-          <div key={i} className="pq-step-group">
-            <div className="pq-subtract-row">
-              <span className="pq-minus">−</span>
-              <span className="pq-subtracted">{step.subtracted}</span>
-              <span className="pq-arrow">←</span>
-              <StepInput
-                value={partials[i]}
-                onChange={v => setPartial(i, v)}
-                isWrong={wrongPartials[i]}
-                small
-              />
-              <span className="pq-x-divisor">× {divisor}</span>
-            </div>
-            <div className="pq-underline" />
-            <div className="pq-remainder-row">
-              <StepInput
-                value={remainders[i]}
-                onChange={v => setRemainder(i, v)}
-                isWrong={wrongRemainders[i]}
-              />
-            </div>
+      {/* ── INPUT MODE: before submit ── */}
+      {!submitted && (
+        <div className="pq-layout">
+          <div className="pq-top-row">
+            <StepInput value={finalQ} onChange={setFinalQ} />
+            <span className="pq-r-label">R</span>
+            <StepInput value={finalR} onChange={setFinalR} />
           </div>
-        ))}
-      </div>
 
-      {/* Result banner */}
-      {submitted && (
-        <div className={`pq-result ${correct ? "pq-result-correct" : "pq-result-wrong"}`}>
-          {correct
-            ? "🎉 Correct!"
-            : `❌ Wrong — the correct answers have been filled in for you`}
+          <div className="pq-division-bar">
+            <span className="pq-divisor">{divisor}</span>
+            <span className="pq-bracket">)</span>
+            <span className="pq-dividend">{dividend}</span>
+          </div>
+
+          {steps.map((step, i) => (
+            <div key={i} className="pq-step-group">
+              <div className="pq-subtract-row">
+                <span className="pq-minus">−</span>
+                <span className="pq-subtracted">{step.subtracted}</span>
+                <span className="pq-arrow">←</span>
+                <StepInput value={partials[i]} onChange={v => setPartial(i, v)} small />
+                <span className="pq-x-divisor">× {divisor}</span>
+              </div>
+              <div className="pq-underline" />
+              <div className="pq-remainder-row">
+                <StepInput value={remainders[i]} onChange={v => setRemainder(i, v)} />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
+      {/* ── RESULT MODE: after submit ── */}
+      {submitted && (
+        <>
+          <div className={`pq-result ${correct ? "pq-result-correct" : "pq-result-wrong"}`}>
+            {correct ? "🎉 Correct!" : "❌ Wrong — see the correct answers below"}
+          </div>
+
+          <div className={`pq-compare ${correct ? "" : "pq-compare-two"}`}>
+            {/* Always show student's answer */}
+            <OperationDisplay
+              dividend={dividend}
+              divisor={divisor}
+              steps={steps}
+              quotient={quotient}
+              remainder={remainder}
+              partials={snapPartials}
+              remainders={snapRemainders}
+              finalQ={snapFinalQ}
+              finalR={snapFinalR}
+              isCorrectVersion={false}
+            />
+
+            {/* Only show correct version if wrong */}
+            {!correct && (
+              <OperationDisplay
+                dividend={dividend}
+                divisor={divisor}
+                steps={steps}
+                quotient={quotient}
+                remainder={remainder}
+                partials={steps.map(s => String(s.partial))}
+                remainders={steps.map(s => String(s.remainderAfter))}
+                finalQ={String(quotient)}
+                finalR={String(remainder)}
+                isCorrectVersion={true}
+              />
+            )}
+          </div>
+        </>
+      )}
+
       {!submitted && (
-        <button className="submit-btn pq-submit" onClick={handleSubmitWithTracking}>
+        <button className="submit-btn pq-submit" onClick={handleSubmit}>
           Submit →
         </button>
       )}

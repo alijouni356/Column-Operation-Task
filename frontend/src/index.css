@@ -432,9 +432,9 @@ body {
 .student-center {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 32px 20px;
+  padding: 32px 24px;
 }
 
 .solve-card {
@@ -557,7 +557,13 @@ body {
 /* ========================
    SOLVE CARD WIDE (division / lq)
 ======================== */
-.solve-card-wide { max-width: 580px !important; }
+.solve-card-wide { max-width: 780px !important; }
+
+/* When showing two operations side by side, card expands to fit */
+.solve-card-comparing {
+  max-width: 860px !important;
+  width: 100% !important;
+}
 
 /* ========================
    ADMIN — LQ FORM
@@ -830,6 +836,75 @@ body {
   border-color: var(--admin);
   background: #fff2ed;
   color: var(--admin);
+  font-weight: 800;
+}
+
+/* ========================
+   PQ COMPARE LAYOUT
+======================== */
+
+/* Side-by-side container when wrong */
+.pq-compare {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pq-compare-two {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+/* Student's layout box */
+.pq-layout-student {
+  background: #fdf2f0;
+  border: 2px solid var(--error);
+  border-radius: 14px;
+  padding: 20px 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Correct answer layout box */
+.pq-layout-correct {
+  background: var(--success-light);
+  border: 2px solid var(--success);
+  border-radius: 14px;
+  padding: 20px 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Version label (Your Answer / Correct Answer) */
+.pq-version-label {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+  letter-spacing: 0.03em;
+}
+.pq-layout-student .pq-version-label { color: var(--error); }
+.pq-layout-correct .pq-version-label { color: var(--success); }
+
+/* Read-only input states */
+.pq-input.pq-read-wrong {
+  border-color: var(--error);
+  background: #fdf2f0;
+  color: var(--error);
+  font-weight: 800;
+}
+.pq-input.pq-read-ok {
+  border-color: var(--success);
+  background: var(--success-light);
+  color: var(--success);
+}
+.pq-input.pq-read-correct {
+  border-color: var(--success);
+  background: var(--success-light);
+  color: var(--success);
   font-weight: 800;
 }
 

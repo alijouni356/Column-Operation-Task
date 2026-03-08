@@ -13,12 +13,14 @@ export default function Student() {
   const [submitting, setSubmitting] = useState(false);
   const [shake, setShake]           = useState(false);
   const [done, setDone]             = useState(false);
+  const [comparing, setComparing]   = useState(false);
 
   const loadProblem = () => {
     setLoading(true);
     setResult(null);
     setAnswer("");
     setDone(false);
+    setComparing(false);
     setProblem(null);
     axios.get("http://localhost:5000/random-problem")
       .then(res => {
