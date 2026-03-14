@@ -924,6 +924,32 @@ body {
 
 .pq-submit { align-self: stretch; }
 
+.pq-action-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.pq-retry-btn {
+  flex: 1;
+  padding: 14px 24px;
+  background: var(--bg);
+  border: 2.5px solid var(--error);
+  border-radius: 14px;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 1.05rem;
+  cursor: pointer;
+  color: var(--error);
+  transition: background 0.15s, transform 0.1s;
+}
+.pq-retry-btn:hover {
+  background: var(--error-light);
+  transform: translateY(-2px);
+}
+.pq-retry-btn:active { transform: translateY(0); }
+
 .pq-next {
   display: flex;
   flex-direction: column;

@@ -95,7 +95,7 @@ function OperationDisplay({ dividend, divisor, steps, quotient, remainder, parti
   );
 }
 
-export default function PartialQuotient({ dividend, divisor, onSubmit }) {
+export default function PartialQuotient({ dividend, divisor, onSubmit, onRetry }) {
   const { steps, quotient, remainder } = computeSteps(dividend, divisor);
 
   const [partials, setPartials]     = useState(steps.map(() => ""));
@@ -229,6 +229,28 @@ export default function PartialQuotient({ dividend, divisor, onSubmit }) {
                 finalR={String(remainder)}
                 isCorrectVersion={true}
               />
+            )}
+          </div>
+
+          {/* Buttons after submit */}
+          <div className="pq-action-row">
+            {!correct && (
+              <button className="pq-retry-btn" onClick={() => {
+                const { steps: s } = computeSteps(dividend, divisor);
+                setPartials(s.map(() => ""));
+                setRemainders(s.map(() => ""));
+                setFinalQ("");
+                setFinalR("");
+                setSubmitted(false);
+                setCorrect(null);
+                setSnapPartials([]);
+                setSnapRemainders([]);
+                setSnapFinalQ("");
+                setSnapFinalR("");
+                if (onRetry) onRetry();
+              }}>
+                ↺ Try Again
+              </button>
             )}
           </div>
         </>

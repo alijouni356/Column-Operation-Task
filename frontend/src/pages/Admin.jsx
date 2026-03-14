@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import API from "../api";
 
 function calcAnswer(operand1, operand2, operation) {
   const a = parseFloat(operand1);
@@ -85,7 +86,7 @@ export default function Admin() {
       if (operation === "lq") {
         if (lqDigits.some(d => d === "")) { setStatus("error"); return; }
         // Save to dedicated lq_problems table with individual digit columns
-        await axios.post("http://localhost:5000/lq-problem", {
+        await axios.post(`${API}/lq-problem`, {
           digit1: Number(lqDigits[0]),
           digit2: Number(lqDigits[1]),
           digit3: Number(lqDigits[2]),
@@ -98,7 +99,7 @@ export default function Admin() {
         if (!form.operand1 || !form.operand2 || !form.correct_answer) {
           setStatus("error"); return;
         }
-        await axios.post("http://localhost:5000/problem", {
+        await axios.post(`${API}/problem`, {
           ...form, operation,
         });
         setForm({ operand1: "", operand2: "", correct_answer: "", explanation: "" });
