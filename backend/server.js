@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
-const mysql = require("mysql2");
+const Database = require("better-sqlite3");
+const path = require("path");
 
 const app = express();
 app.use(cors());
@@ -8,169 +9,198 @@ app.use(express.json());
 
 /* ========================
    DATABASE
+   SQLite — single file, no installation needed.
+   Creates database.db automatically on first run.
 ======================== */
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "column_op",
-  port: 3306,
-});
+const db = new Database(path.join(__dirname, "database.db"));
 
-db.connect((err) => {
-  if (err) console.error("❌ MySQL connection failed:", err);
-  else console.log("✅ Connected to MySQL");
-});
+// Create all tables automatically on startup
+db.exec(`
+  CREATE TABLE IF NOT EXISTS problems (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    operand1       TEXT NOT NULL,
+    operand2       TEXT NOT NULL,
+    operation      TEXT NOT NULL,
+    correct_answer TEXT NOT NULL,
+    explanation    TEXT,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS student_answers (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    problem_id     INTEGER NOT NULL,
+    student_answer TEXT NOT NULL,
+    is_correct     INTEGER NOT NULL,
+    answered_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (problem_id) REFERENCES problems(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS lq_problems (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    digit1         INTEGER NOT NULL,
+    digit2         INTEGER NOT NULL,
+    digit3         INTEGER NOT NULL,
+    best_quotient  REAL NOT NULL,
+    explanation    TEXT,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS lq_answers (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    lq_problem_id  INTEGER NOT NULL,
+    is_correct     INTEGER NOT NULL,
+    answered_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (lq_problem_id) REFERENCES lq_problems(id)
+  );
+`);
+
+console.log("✅ SQLite database ready");
 
 /* ========================
    ROUTES — STANDARD PROBLEMS
-   Table: problems
-   (operand1, operand2, operation, correct_answer, explanation)
 ======================== */
 
 app.get("/", (req, res) => res.send("Backend running 🚀"));
 
-// Create standard problem (Admin)
+// Create standard problem
 app.post("/problem", (req, res) => {
-  const { operand1, operand2, correct_answer, explanation } = req.body;
-  const operation = String(req.body.operation).trim();
-  const sql = `INSERT INTO problems (operand1, operand2, operation, correct_answer, explanation)
-               VALUES (?, ?, ?, ?, ?)`;
-  db.query(sql, [operand1, operand2, operation, correct_answer, explanation], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    const { operand1, operand2, correct_answer, explanation } = req.body;
+    const operation = String(req.body.operation).trim();
+    const stmt = db.prepare(`
+      INSERT INTO problems (operand1, operand2, operation, correct_answer, explanation)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    stmt.run(operand1, operand2, operation, correct_answer, explanation);
     res.json({ message: "Problem created ✅" });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Get random standard problem
 app.get("/problem/random", (req, res) => {
-  db.query("SELECT * FROM problems ORDER BY RAND() LIMIT 1", (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (result.length === 0) return res.json({ message: "No problems yet" });
-    res.json(result[0]);
-  });
+  try {
+    const problem = db.prepare("SELECT * FROM problems ORDER BY RANDOM() LIMIT 1").get();
+    if (!problem) return res.json({ message: "No problems yet" });
+    res.json(problem);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Get standard problem by ID
 app.get("/problem/:id", (req, res) => {
-  db.query("SELECT * FROM problems WHERE id = ?", [req.params.id], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (result.length === 0) return res.status(404).json({ message: "Problem not found" });
-    res.json(result[0]);
-  });
+  try {
+    const problem = db.prepare("SELECT * FROM problems WHERE id = ?").get(req.params.id);
+    if (!problem) return res.status(404).json({ message: "Problem not found" });
+    res.json(problem);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Submit answer for standard problem
 app.post("/submit-answer", (req, res) => {
-  const { problem_id, student_answer } = req.body;
-  db.query("SELECT * FROM problems WHERE id = ?", [problem_id], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (result.length === 0) return res.status(404).json({ message: "Problem not found" });
+  try {
+    const { problem_id, student_answer } = req.body;
+    const problem = db.prepare("SELECT * FROM problems WHERE id = ?").get(problem_id);
+    if (!problem) return res.status(404).json({ message: "Problem not found" });
 
-    const problem = result[0];
-    const is_correct = Math.abs(Number(student_answer) - Number(problem.correct_answer)) < 0.01;
+    const is_correct = Math.abs(Number(student_answer) - Number(problem.correct_answer)) < 0.01 ? 1 : 0;
 
-    db.query(
-      "INSERT INTO student_answers (problem_id, student_answer, is_correct) VALUES (?, ?, ?)",
-      [problem_id, student_answer, is_correct]
-    );
+    db.prepare(
+      "INSERT INTO student_answers (problem_id, student_answer, is_correct) VALUES (?, ?, ?)"
+    ).run(problem_id, student_answer, is_correct);
 
-    if (is_correct) {
-      return res.json({ result: "Correct" });
-    } else {
-      return res.json({
-        result: "Wrong",
-        correct_answer: problem.correct_answer,
-        explanation: problem.explanation,
-      });
-    }
-  });
+    if (is_correct) return res.json({ result: "Correct" });
+    return res.json({
+      result: "Wrong",
+      correct_answer: problem.correct_answer,
+      explanation: problem.explanation,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /* ========================
    ROUTES — LARGEST QUOTIENT
-   Table: lq_problems
-   (digit1, digit2, digit3, best_quotient, explanation)
 ======================== */
 
-// Create LQ problem (Admin)
+// Create LQ problem
 app.post("/lq-problem", (req, res) => {
-  const { digit1, digit2, digit3, best_quotient, explanation } = req.body;
-  const sql = `INSERT INTO lq_problems (digit1, digit2, digit3, best_quotient, explanation)
-               VALUES (?, ?, ?, ?, ?)`;
-  db.query(sql, [digit1, digit2, digit3, best_quotient, explanation], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    const { digit1, digit2, digit3, best_quotient, explanation } = req.body;
+    db.prepare(`
+      INSERT INTO lq_problems (digit1, digit2, digit3, best_quotient, explanation)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(digit1, digit2, digit3, best_quotient, explanation);
     res.json({ message: "LQ problem created ✅" });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Get random LQ problem (Student)
+// Get random LQ problem
 app.get("/lq-problem/random", (req, res) => {
-  db.query("SELECT * FROM lq_problems ORDER BY RAND() LIMIT 1", (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (result.length === 0) return res.json({ message: "No LQ problems yet" });
-    res.json(result[0]);
-  });
+  try {
+    const problem = db.prepare("SELECT * FROM lq_problems ORDER BY RANDOM() LIMIT 1").get();
+    if (!problem) return res.json({ message: "No LQ problems yet" });
+    res.json(problem);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Submit answer for LQ problem
+// Submit LQ answer
 app.post("/lq-submit", (req, res) => {
-  const { lq_problem_id, is_correct } = req.body;
+  try {
+    const { lq_problem_id, is_correct } = req.body;
+    const problem = db.prepare("SELECT * FROM lq_problems WHERE id = ?").get(lq_problem_id);
+    if (!problem) return res.status(404).json({ message: "LQ problem not found" });
 
-  db.query("SELECT * FROM lq_problems WHERE id = ?", [lq_problem_id], (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (result.length === 0) return res.status(404).json({ message: "LQ problem not found" });
+    db.prepare(
+      "INSERT INTO lq_answers (lq_problem_id, is_correct) VALUES (?, ?)"
+    ).run(lq_problem_id, is_correct ? 1 : 0);
 
-    const problem = result[0];
-
-    // Save attempt
-    db.query(
-      "INSERT INTO lq_answers (lq_problem_id, is_correct) VALUES (?, ?)",
-      [lq_problem_id, is_correct]
-    );
-
-    if (is_correct) {
-      return res.json({ result: "Correct" });
-    } else {
-      return res.json({
-        result: "Wrong",
-        best_quotient: problem.best_quotient,
-        digit1: problem.digit1,
-        digit2: problem.digit2,
-        digit3: problem.digit3,
-        explanation: problem.explanation,
-      });
-    }
-  });
+    if (is_correct) return res.json({ result: "Correct" });
+    return res.json({
+      result: "Wrong",
+      best_quotient: problem.best_quotient,
+      digit1: problem.digit1,
+      digit2: problem.digit2,
+      digit3: problem.digit3,
+      explanation: problem.explanation,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /* ========================
-   ROUTES — RANDOM ANY (Student homepage)
-   Picks randomly from both tables
+   ROUTES — RANDOM ANY
 ======================== */
 app.get("/random-problem", (req, res) => {
-  // Randomly pick which table to pull from
-  const pickLQ = Math.random() < 0.5;
-  const query = pickLQ
-    ? "SELECT *, 'lq' AS source FROM lq_problems ORDER BY RAND() LIMIT 1"
-    : "SELECT *, 'standard' AS source FROM problems ORDER BY RAND() LIMIT 1";
+  try {
+    const pickLQ = Math.random() < 0.5;
 
-  db.query(query, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (result.length === 0) {
-      // Try the other table as fallback
-      const fallback = pickLQ
-        ? "SELECT *, 'standard' AS source FROM problems ORDER BY RAND() LIMIT 1"
-        : "SELECT *, 'lq' AS source FROM lq_problems ORDER BY RAND() LIMIT 1";
-      db.query(fallback, (err2, result2) => {
-        if (err2) return res.status(500).json({ error: err2.message });
-        if (result2.length === 0) return res.json({ message: "No problems yet" });
-        res.json(result2[0]);
-      });
-    } else {
-      res.json(result[0]);
+    let problem = pickLQ
+      ? db.prepare("SELECT *, 'lq' AS source FROM lq_problems ORDER BY RANDOM() LIMIT 1").get()
+      : db.prepare("SELECT *, 'standard' AS source FROM problems ORDER BY RANDOM() LIMIT 1").get();
+
+    // Fallback to the other table if first is empty
+    if (!problem) {
+      problem = pickLQ
+        ? db.prepare("SELECT *, 'standard' AS source FROM problems ORDER BY RANDOM() LIMIT 1").get()
+        : db.prepare("SELECT *, 'lq' AS source FROM lq_problems ORDER BY RANDOM() LIMIT 1").get();
     }
-  });
+
+    if (!problem) return res.json({ message: "No problems yet" });
+    res.json(problem);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /* ========================

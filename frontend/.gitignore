@@ -21,3 +21,10 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+
+node_modules/
+build/
+npm-debug.log*
+# Don't push the database file — each machine gets its own
+database.db
