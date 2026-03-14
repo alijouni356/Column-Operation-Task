@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import API from "../api";
 import PartialQuotient from "./PartialQuotient";
 import LargestQuotient from "./LargestQuotient";
 
@@ -23,7 +22,7 @@ export default function Student() {
     setDone(false);
     setComparing(false);
     setProblem(null);
-    axios.get(`${API}/random-problem`)
+    axios.get("http://localhost:5000/random-problem")
       .then(res => {
         if (res.data.message) { setLoading(false); return; }
         // /random-problem adds source="lq" for lq_problems, source="standard" for problems
@@ -48,7 +47,7 @@ export default function Student() {
     if (!answer) return;
     setSubmitting(true);
     try {
-      const res = await axios.post(`${API}/submit-answer`, {
+      const res = await axios.post("http://localhost:5000/submit-answer", {
         problem_id: problem.id,
         student_answer: answer,
       });
@@ -59,7 +58,7 @@ export default function Student() {
 
   // Division (partial quotient)
   const handleDivisionSubmit = async (isCorrect, quotient) => {
-    const res = await axios.post(`${API}/submit-answer`, {
+    const res = await axios.post("http://localhost:5000/submit-answer", {
       problem_id: problem.id,
       student_answer: quotient,
     });
@@ -70,7 +69,7 @@ export default function Student() {
 
   // Largest quotient — called by LargestQuotient component on submit
   const handleLQSubmit = async (isCorrect) => {
-    const res = await axios.post(`${API}/lq-submit`, {
+    const res = await axios.post("http://localhost:5000/lq-submit", {
       lq_problem_id: problem.id,
       is_correct: isCorrect,
     });
